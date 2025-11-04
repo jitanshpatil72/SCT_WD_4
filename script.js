@@ -1,109 +1,89 @@
-const board = document.getElementById('board');
-const status = document.getElementById('status');
-const modeToggle = document.getElementById('modeToggle');
+const taskForm = document.getElementById('taskForm');
+const taskList = document.getElementById('taskList');
 
-let cells = [];
-let currentPlayer = 'X';
-let gameActive = true;
-let isVsComputer = false;
-let gameState = ["", "", "", "", "", "", "", "", ""];
+let tasks = [];
 
-const winPatterns = [
-  [0, 1, 2], [3, 4, 5], [6, 7, 8],  // Rows
-  [0, 3, 6], [1, 4, 7], [2, 5, 8],  // Columns
-  [0, 4, 8], [2, 4, 6]              // Diagonals
-];
+taskForm.addEventListener('submit', (e) => {
+  e.preventDefault();
 
-function init() {
-  board.innerHTML = '';
-  cells = [];
-  gameState = ["", "", "", "", "", "", "", "", ""];
-  currentPlayer = 'X';
-  gameActive = true;
-  status.textContent = "Player X's turn";
-  isVsComputer = modeToggle.checked;
+  const title = document.getElementById('taskTitle').value.trim();
+  const date = document.getElementById('taskDate').value;
+  const time = document.getElementById('taskTime').value;
 
-  for (let i = 0; i < 9; i++) {
-    const cell = document.createElement('div');
-    cell.classList.add('cell');
-    cell.dataset.index = i;
-    cell.addEventListener('click', handleCellClick);
-    board.appendChild(cell);
-    cells.push(cell);
-  }
+  if (!title || !date || !time) return;
+
+  const newTask = {
+    id: Date.now(),
+    title,
+    date,
+    time,
+    completed: false
+  };
+
+  tasks.push(newTask);
+  renderTasks();
+  taskForm.reset();
+});
+
+function renderTasks() {
+  taskList.innerHTML = '';
+
+  tasks.forEach(task => {
+    const li = document.createElement('li');
+    li.className = 'task-item';
+
+    const taskInfo = document.createElement('div');
+    taskInfo.className = 'task-info';
+    taskInfo.innerHTML = `
+      <strong class="${task.completed ? 'completed' : ''}">${task.title}</strong><br>
+      ${task.date} ${task.time}
+    `;
+
+    const actions = document.createElement('div');
+    actions.className = 'task-actions';
+
+    const completeBtn = document.createElement('button');
+    completeBtn.textContent = task.completed ? 'Undo' : 'Done';
+    completeBtn.onclick = () => toggleComplete(task.id);
+
+    const editBtn = document.createElement('button');
+    editBtn.textContent = 'Edit';
+    editBtn.onclick = () => editTask(task.id);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.onclick = () => deleteTask(task.id);
+
+    actions.append(completeBtn, editBtn, deleteBtn);
+    li.append(taskInfo, actions);
+    taskList.appendChild(li);
+  });
 }
 
-function handleCellClick(e) {
-  const idx = e.target.dataset.index;
-
-  if (!gameActive || gameState[idx] !== "") return;
-
-  makeMove(idx, currentPlayer);
-
-  if (checkWin(currentPlayer)) {
-    status.textContent = `Player ${currentPlayer} wins!`;
-    gameActive = false;
-    return;
-  }
-
-  if (gameState.every(cell => cell !== "")) {
-    status.textContent = "It's a draw!";
-    gameActive = false;
-    return;
-  }
-
-  currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-  status.textContent = `Player ${currentPlayer}'s turn`;
-
-  // Computer move
-  if (isVsComputer && currentPlayer === 'O' && gameActive) {
-    setTimeout(computerMove, 500);
-  }
-}
-
-function makeMove(index, player) {
-  gameState[index] = player;
-  cells[index].textContent = player;
-  cells[index].style.cursor = 'default';
-}
-
-function checkWin(player) {
-  return winPatterns.some(pattern =>
-    pattern.every(index => gameState[index] === player)
+function toggleComplete(id) {
+  tasks = tasks.map(task =>
+    task.id === id ? { ...task, completed: !task.completed } : task
   );
+  renderTasks();
 }
 
-function computerMove() {
-  const emptyIndices = gameState
-    .map((val, i) => (val === "" ? i : null))
-    .filter(i => i !== null);
+function editTask(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
 
-  if (emptyIndices.length === 0) return;
+  const newTitle = prompt('Edit task title:', task.title);
+  const newDate = prompt('Edit date:', task.date);
+  const newTime = prompt('Edit time:', task.time);
 
-  const randomIndex = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
-  makeMove(randomIndex, 'O');
-
-  if (checkWin('O')) {
-    status.textContent = "Computer wins!";
-    gameActive = false;
-    return;
+  if (newTitle && newDate && newTime) {
+    task.title = newTitle;
+    task.date = newDate;
+    task.time = newTime;
+    renderTasks();
   }
-
-  if (gameState.every(cell => cell !== "")) {
-    status.textContent = "It's a draw!";
-    gameActive = false;
-    return;
-  }
-
-  currentPlayer = 'X';
-  status.textContent = "Player X's turn";
 }
 
-function resetGame() {
-  init();
+function deleteTask(id) {
+  tasks = tasks.filter(task => task.id !== id);
+  renderTasks();
 }
-
-modeToggle.addEventListener('change', resetGame);
-
-// Start the game
-init();
